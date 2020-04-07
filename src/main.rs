@@ -1,6 +1,19 @@
 use actix_web::{App, HttpResponse, HttpServer, Responder, get, head, post, web};
 use serde::Deserialize;
 use rand::Rng;
+use dotenv::dotenv;
+use std::env;
+use diesel::{MysqlConnection, Connection, RunQueryDsl};
+use crate::models::NewLink;
+use diesel::prelude::*;
+use actix_web::middleware::{Logger, Compress};
+use actix_files::Files;
+
+#[macro_use]
+extern crate diesel;
+
+pub mod schema;
+pub mod models;
 
 #[head("/")]
 async fn index_head() -> impl Responder { HttpResponse::Ok() }
@@ -18,33 +31,69 @@ struct ShortenPayload {
 
 #[post("/api/shorten")]
 async fn api_shorten(
+    conn: web::Data<MysqlConnection>,
     json: web::Json<ShortenPayload>
 ) -> impl Responder {
+    use schema::links;
+
     let short_code: String = rand::thread_rng()
         .sample_iter(rand::distributions::Alphanumeric)
         .take(3)
         .collect();
+
+    let new_link = NewLink {
+        short_code: &short_code,
+        original_link: &json.source
+    };
+
+    diesel::insert_into(links::table)
+        .values(&new_link)
+        .execute(conn.get_ref())
+        // .get_result(conn.get_ref())
+        .expect("Unable to add link");
 
     HttpResponse::Ok().body(short_code)
 }
 
 #[get("/{short}")]
 async fn short(
-    path: web::Path<(String)>
+    conn: web::Data<MysqlConnection>,
+    path: web::Path<(String, )>
 ) -> impl Responder {
+    use schema::links::dsl::*;
+    use self::models::Link;
+
+    let short = links.filter(short_code.eq(&path.0))
+        .first::<Link>(conn.get_ref())
+        .expect("Unable to resolve code");
+
     HttpResponse::PermanentRedirect()
-        .header("Location", "https://google.com")
+        .header("Location", short.original_link)
         .finish()
+}
+
+fn get_db_connection() -> MysqlConnection {
+    let database_url = env::var("DATABASE_URL")
+        .expect("DATABASE_URL must be set");
+
+    MysqlConnection::establish(&database_url)
+        .expect(&format!("Error connecting to {}", database_url))
 }
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
+    dotenv().ok();
+
+    HttpServer::new( move || {
         App::new()
+            .data(get_db_connection())
             .service(index)
             .service(index_head)
             .service(short)
             .service(api_shorten)
+            .service(Files::new("/static", "./static"))
+            .wrap(Logger::default())
+            .wrap(Compress::default())
     })
     .bind("0.0.0.0:8080").expect("Unable to bind to address")
     .run()

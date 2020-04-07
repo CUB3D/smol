@@ -1,10 +1,32 @@
 <!DOCTYPE html>
 <html>
   <head>
+    <link rel="stylesheet" href="/static/bootstrap.min.css"/>
 
+    <script>
+      window.onload = () => {
+          document.getElementById("sub").onclick = (e) => {
+              const src = document.getElementById("url").value;
+
+              const r = new XMLHttpRequest();
+              r.onload = () => {
+                  // #TODO: show in modal
+                  console.log(r.responseText);
+                  document.getElementById("tmp").textContent = r.responseText;
+              };
+              r.open("POST", "/api/shorten", true);
+              r.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
+              r.send('{"source": "' + src + '"}');
+          };
+      };
+    </script>
   </head>
   <body>
-    <input type="text"/>
-    <button>Submit</button>
+
+    <div class="container">
+      <input id="url" type="text"/>
+      <button id="sub" class="btn">Submit</button>
+      <p id="tmp"></p>
+    </div>
   </body>
 </html>

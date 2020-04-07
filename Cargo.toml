@@ -9,6 +9,13 @@ edition = "2018"
 [dependencies]
 actix-web = "2.0"
 actix-rt = "1.0"
+actix-files = "0.2.1"
+
 rand = "0.7.3"
 
 serde = { version = "1.0.106", features = ["derive"] }
+
+dotenv = "0.15.0"
+
+chrono = "0.4.11"
+diesel = { version = "1.4.4", features = ["mysql", "chrono"] }

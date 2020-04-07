@@ -1,0 +1,8 @@
+-- Your SQL goes here
+
+CREATE TABLE links (
+    id INTEGER PRIMARY KEY AUTO_INCREMENT NOT NULL,
+    original_link VARCHAR(128) NOT NULL,
+    short_code VARCHAR(4) UNIQUE NOT NULL,
+    created DATETIME DEFAULT CURRENT_TIMESTAMP() NOT NULL
+)
