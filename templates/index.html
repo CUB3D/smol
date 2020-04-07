@@ -12,9 +12,12 @@
 
               const r = new XMLHttpRequest();
               r.onload = () => {
-                  // #TODO: show in modal
-                  console.log(r.responseText);
-                  document.getElementById("tmp").href = "/" + r.responseText;
+                  const shortLink = window.location.href + r.responseText;
+                  document.getElementById("link").textContent = shortLink;
+
+                  document.getElementById("clip-copy").onclick = (e) => {
+                      navigator.clipboard.writeText(shortLink);
+                  };
 
                   $("#got-short").modal({});
               };
@@ -24,33 +27,52 @@
           };
       };
     </script>
+    <style>
+      @font-face {
+        font-family: 'Roboto';
+        src: url('/static/font/Roboto-Regular.eot');
+        src: local('Roboto'), local('Roboto-Regular'),
+        url('/static/font/Roboto-Regular.eot?#iefix') format('embedded-opentype'),
+        url('/static/font/Roboto-Regular.woff2') format('woff2'),
+        url('/static/font/Roboto-Regular.woff') format('woff'),
+        url('/static/font/Roboto-Regular.ttf') format('truetype'),
+        url('/static/font/Roboto-Regular.svg#Roboto-Regular') format('svg');
+        font-weight: normal;
+        font-style: normal;
+      }
+
+      p,button,input,a {
+        font-family: Roboto, sans-serif;
+      }
+
+
+      html {
+        font-size: 1.5rem;
+      }
+    </style>
   </head>
-  <body>
+  <body class="bg-dark">
     <div id="got-short" class="modal" tabindex="-1" role="dialog">
-      <div class="modal-dialog" role="document">
+      <div class="modal-dialog modal-dialog-centered" role="document">
         <div class="modal-content">
           <div class="modal-header">
-            <h5 class="modal-title">Modal title</h5>
+            <h5 class="modal-title">Your shortened link</h5>
             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
               <span aria-hidden="true">&times;</span>
             </button>
           </div>
           <div class="modal-body">
-            <a id="tmp" href="">Goto</a>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-primary">Save changes</button>
-            <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+            <code id="link"></code>
+            <img id="clip-copy" alt="Copy to clipboard" src="/static/img/clipboard.svg" class="btn btn-primary"/>
           </div>
         </div>
       </div>
     </div>
 
-    <div class="container">
-      <div class="form-group ml-auto mr-auto">
-        <input class="d-block" id="url" type="text"/>
-        <button id="sub" class="btn btn-primary d-block">Submit</button>
-      </div>
+    <div class="ml-auto mr-auto d-flex flex-column vh-100 justify-content-center" style="max-width: 500px">
+      <h3 class="w-100 text-center text-white" style="font-size: 3.5rem">SMOL</h3>
+      <input class="d-block w-100 input-group-text mb-2" id="url" type="url" placeholder="https://cub3d.pw" autofocus/>
+      <button id="sub" class="btn btn-primary d-block w-100">GO</button>
     </div>
 
     <script src="/static/jquery.min.js"></script>
