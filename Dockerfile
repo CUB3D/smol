@@ -2,8 +2,9 @@ FROM rust:latest
 
 WORKDIR /home/code
 
+ADD ./migrations ./migrations
 ADD ./src/ ./src/
-COPY ./static ./static/
+ADD ./static ./static/
 ADD ./templates ./templates/
 ADD Cargo.toml .
 

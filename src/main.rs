@@ -12,6 +12,10 @@ use std::env;
 #[macro_use]
 extern crate diesel;
 
+#[macro_use]
+extern crate diesel_migrations;
+embed_migrations!();
+
 pub mod models;
 pub mod schema;
 
@@ -74,13 +78,19 @@ async fn short(conn: web::Data<MysqlConnection>, path: web::Path<(String,)>) -> 
 fn get_db_connection() -> MysqlConnection {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
-    MysqlConnection::establish(&database_url)
-        .expect(&format!("Error connecting to {}", database_url))
+    let conn = MysqlConnection::establish(&database_url)
+        .expect(&format!("Error connecting to {}", database_url));
+
+    embedded_migrations::run_with_output(&conn, &mut std::io::stdout())
+        .expect("Unable to run migrations");
+
+    conn
 }
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
+    env_logger::init();
 
     HttpServer::new(move || {
         App::new()

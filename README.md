@@ -10,5 +10,17 @@ A simple link shortener, written in Rust with actix-web
 Current git master hosted -> [here](https://s.cub3d.pw)
 
 ### Running with docker
-
-
+```yaml
+version: '3'
+services:
+ smol:
+   container_name: smol
+   build:
+     context: https://github.com/CUB3D/smol.git
+   ports:
+     - "8094:8080"
+   environment:
+     RUST_LOG: info
+     DATABASE_URL: "<TODO>"
+   restart: unless-stopped
+```
