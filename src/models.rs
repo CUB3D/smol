@@ -1,5 +1,3 @@
-use diesel::prelude::*;
-
 use super::schema::links;
 
 #[derive(Queryable)]
