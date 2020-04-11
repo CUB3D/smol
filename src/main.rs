@@ -9,6 +9,8 @@ use rand::Rng;
 use serde::Deserialize;
 use std::env;
 use actix_web::http::header::LOCATION;
+use actix_web::web::Data;
+use diesel::r2d2::{Pool, ConnectionManager};
 
 #[macro_use]
 extern crate diesel;
@@ -38,8 +40,11 @@ struct ShortenPayload {
     pub source: String,
 }
 
+type DBHandle = Pool<ConnectionManager<MysqlConnection>>;
+
 #[post("/api/shorten")]
 async fn api_shorten(
+    pool: Data<DBHandle>,
     json: web::Json<ShortenPayload>,
 ) -> impl Responder {
     use schema::links;
@@ -54,7 +59,7 @@ async fn api_shorten(
         original_link: &json.source,
     };
 
-    let conn = get_db_connection();
+    let conn = pool.get().unwrap();
 
     diesel::insert_into(links::table)
         .values(&new_link)
@@ -65,11 +70,14 @@ async fn api_shorten(
 }
 
 #[get("/{short}")]
-async fn short(path: web::Path<(String,)>) -> impl Responder {
+async fn short(
+    pool: Data<DBHandle>,
+    path: web::Path<(String,)>
+) -> impl Responder {
     use self::models::Link;
     use schema::links::dsl::*;
 
-    let conn = get_db_connection();
+    let conn = pool.get().unwrap();
 
     let short = links
         .filter(short_code.eq(&path.0))
@@ -86,7 +94,7 @@ async fn short(path: web::Path<(String,)>) -> impl Responder {
     }
 }
 
-fn get_db_connection() -> MysqlConnection {
+fn get_db_connection() -> Pool<ConnectionManager<MysqlConnection>> {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
     let conn = MysqlConnection::establish(&database_url)
@@ -95,7 +103,15 @@ fn get_db_connection() -> MysqlConnection {
     embedded_migrations::run_with_output(&conn, &mut std::io::stdout())
         .expect("Unable to run migrations");
 
-    conn
+    let manager = ConnectionManager::<MysqlConnection>::new(database_url);
+
+    let pool = diesel::r2d2::Pool::builder()
+        .max_size(4)
+        .test_on_check_out(true)
+        .build(manager)
+        .unwrap();
+
+    pool
 }
 
 #[actix_rt::main]
@@ -105,6 +121,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
+            .data(get_db_connection())
             .service(index)
             .service(index_head)
             .service(favicon)
