@@ -1,6 +1,6 @@
 use crate::models::NewLink;
 use actix_files::Files;
-use actix_web::middleware::{Compress, Logger};
+use actix_web::middleware::{Compress, Logger, NormalizePath};
 use actix_web::{get, head, post, web, App, HttpResponse, HttpServer, Responder};
 use diesel::prelude::*;
 use diesel::{Connection, MysqlConnection, RunQueryDsl};
@@ -8,6 +8,7 @@ use dotenv::dotenv;
 use rand::Rng;
 use serde::Deserialize;
 use std::env;
+use actix_web::http::header::LOCATION;
 
 #[macro_use]
 extern crate diesel;
@@ -20,13 +21,16 @@ pub mod models;
 pub mod schema;
 
 #[head("/")]
-async fn index_head() -> impl Responder {
-    HttpResponse::Ok()
-}
+async fn index_head() -> impl Responder { HttpResponse::Ok() }
 
 #[get("/")]
 async fn index() -> impl Responder {
     HttpResponse::Ok().body(include_str!("../templates/index.html"))
+}
+
+#[get("/favicon.ico")]
+async fn favicon() -> impl Responder {
+    HttpResponse::Ok().finish()
 }
 
 #[derive(Deserialize, Debug)]
@@ -36,7 +40,6 @@ struct ShortenPayload {
 
 #[post("/api/shorten")]
 async fn api_shorten(
-    conn: web::Data<MysqlConnection>,
     json: web::Json<ShortenPayload>,
 ) -> impl Responder {
     use schema::links;
@@ -51,28 +54,36 @@ async fn api_shorten(
         original_link: &json.source,
     };
 
+    let conn = get_db_connection();
+
     diesel::insert_into(links::table)
         .values(&new_link)
-        .execute(conn.get_ref())
-        // .get_result(conn.get_ref())
+        .execute(&conn)
         .expect("Unable to add link");
 
     HttpResponse::Ok().body(short_code)
 }
 
 #[get("/{short}")]
-async fn short(conn: web::Data<MysqlConnection>, path: web::Path<(String,)>) -> impl Responder {
+async fn short(path: web::Path<(String,)>) -> impl Responder {
     use self::models::Link;
     use schema::links::dsl::*;
 
+    let conn = get_db_connection();
+
     let short = links
         .filter(short_code.eq(&path.0))
-        .first::<Link>(conn.get_ref())
-        .expect("Unable to resolve code");
+        .first::<Link>(&conn);
 
-    HttpResponse::PermanentRedirect()
-        .header("Location", short.original_link)
-        .finish()
+    if let Ok(short) = short {
+        HttpResponse::PermanentRedirect()
+            .header(LOCATION, short.original_link)
+            .finish()
+    } else {
+        HttpResponse::PermanentRedirect()
+            .header(LOCATION, "/")
+            .finish()
+    }
 }
 
 fn get_db_connection() -> MysqlConnection {
@@ -94,14 +105,15 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
-            .data(get_db_connection())
             .service(index)
             .service(index_head)
+            .service(favicon)
             .service(short)
             .service(api_shorten)
             .service(Files::new("/static", "./static"))
             .wrap(Logger::default())
             .wrap(Compress::default())
+            .wrap(NormalizePath::default())
     })
     .bind("0.0.0.0:8080")
     .expect("Unable to bind to address")
