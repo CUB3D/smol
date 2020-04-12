@@ -6,7 +6,7 @@ use diesel::prelude::*;
 use diesel::{Connection, MysqlConnection, RunQueryDsl};
 use dotenv::dotenv;
 use rand::Rng;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::env;
 use actix_web::http::header::LOCATION;
 use actix_web::web::Data;
@@ -69,7 +69,7 @@ async fn api_shorten(
     HttpResponse::Ok().body(short_code)
 }
 
-#[get("/{short}")]
+#[get("/{shortId}")]
 async fn short(
     pool: Data<DBHandle>,
     path: web::Path<(String,)>
@@ -79,11 +79,11 @@ async fn short(
 
     let conn = pool.get().unwrap();
 
-    let short = links
+    let other_short = links
         .filter(short_code.eq(&path.0))
         .first::<Link>(&conn);
 
-    if let Ok(short) = short {
+    if let Ok(short) = other_short {
         HttpResponse::PermanentRedirect()
             .header(LOCATION, short.original_link)
             .finish()
@@ -91,6 +91,39 @@ async fn short(
         HttpResponse::PermanentRedirect()
             .header(LOCATION, "/")
             .finish()
+    }
+}
+
+#[derive(Serialize)]
+struct LinkInfo {
+    target: String,
+    created: String
+}
+
+#[get("/api/link/{shortId}/info")]
+async fn api_link_info(
+    pool: Data<DBHandle>,
+    path: web::Path<(String,)>
+) -> impl Responder {
+    use self::models::Link;
+    use schema::links::dsl::*;
+
+    let conn = pool.get().unwrap();
+
+    let other_short = links
+        .filter(short_code.eq(&path.0))
+        .first::<Link>(&conn);
+
+    if let Ok(s) = other_short {
+        let link_info = LinkInfo {
+            target: s.original_link,
+            created: s.created.to_string()
+        };
+
+        HttpResponse::Ok()
+            .json(link_info)
+    } else {
+        HttpResponse::BadRequest().finish()
     }
 }
 
@@ -127,6 +160,7 @@ async fn main() -> std::io::Result<()> {
             .service(favicon)
             .service(short)
             .service(api_shorten)
+            .service(api_link_info)
             .service(Files::new("/static", "./static"))
             .wrap(Logger::default())
             .wrap(Compress::default())

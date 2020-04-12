@@ -1,0 +1,77 @@
+swagger: "2.0"
+info:
+  description: "SMOL - Simple Minimiser Of Links: A simple link shortener"
+  version: "1.0.0"
+  title: "SMOL"
+  license:
+    name: "AGPL 3.0"
+    url: "https://www.gnu.org/licenses/agpl-3.0.en.html"
+host: "s.cub3d.pw"
+basePath: "/api"
+tags:
+- name: "api"
+  description: "Manage links"
+schemes:
+- "https"
+- "http"
+paths:
+  /shorten:
+    post:
+      tags:
+      - "api"
+      summary: "Create a short link"
+      description: ""
+      operationId: "shortenLink"
+      consumes:
+      - "application/json"
+      produces:
+      - "*/*"
+      parameters:
+      - in: "body"
+        name: "body"
+        description: "Link to shorten"
+        required: true
+        schema:
+          $ref: "#/definitions/ShortLinkInput"
+      responses:
+        "200":
+          description: "Successful"
+          schema:
+            type: "string"
+  /link/{shortLink}/info:
+    get:
+      tags:
+      - "api"
+      summary: "Get link info"
+      description: ""
+      operationId: "infoLink"
+      produces:
+      - "application/json"
+      parameters:
+      - in: "path"
+        name: "shortLink"
+        description: "Short code of link"
+        required: true
+        type: "string"
+      responses:
+        "200":
+          description: "Successful"
+          schema:
+            $ref: "#/definitions/LinkInfo"
+definitions:
+  ShortLinkInput:
+    type: "object"
+    properties:
+      source:
+        type: "string"
+        format: "url"
+  LinkInfo:
+    type: "object"
+    properties:
+      target:
+        type: "string"
+        format: "url"
+      created:
+        type: "string"
+        format: "date-time"
+        description: "Time that link was shortened"
