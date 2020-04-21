@@ -11,6 +11,7 @@ use std::env;
 use actix_web::http::header::LOCATION;
 use actix_web::web::Data;
 use diesel::r2d2::{Pool, ConnectionManager};
+use url::{Url, ParseError};
 
 #[macro_use]
 extern crate diesel;
@@ -54,9 +55,24 @@ async fn api_shorten(
         .take(3)
         .collect();
 
+    let mut source_url = json.source.clone();
+
+    let source_parse = Url::parse(&source_url);
+
+
+    // If the given url is missing the scheme then try adding it
+    if let Err(ParseError::RelativeUrlWithoutBase) = source_parse {
+        let http_url =format!("https://{}", &source_url);
+        if let Ok(http_url) = Url::parse(&http_url) {
+            source_url = http_url.to_string();
+        } else {
+            return HttpResponse::BadRequest().finish();
+        }
+    }
+
     let new_link = NewLink {
         short_code: &short_code,
-        original_link: &json.source,
+        original_link: source_url.as_str(),
     };
 
     let conn = pool.get().unwrap();
@@ -76,6 +92,8 @@ async fn short(
 ) -> impl Responder {
     use self::models::Link;
     use schema::links::dsl::*;
+
+    println!("Given link: {}", &path.0);
 
     let conn = pool.get().unwrap();
 

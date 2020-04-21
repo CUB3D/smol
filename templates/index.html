@@ -12,14 +12,18 @@
 
               const r = new XMLHttpRequest();
               r.onload = () => {
-                  const shortLink = window.location.href + r.responseText;
-                  document.getElementById("link").textContent = shortLink;
+                  if (r.status === 200) {
+                      const shortLink = window.location.href + r.responseText;
+                      document.getElementById("link").textContent = shortLink;
 
-                  document.getElementById("clip-copy").onclick = (e) => {
-                      navigator.clipboard.writeText(shortLink);
-                  };
+                      document.getElementById("clip-copy").onclick = (e) => {
+                          navigator.clipboard.writeText(shortLink);
+                      };
 
-                  $("#got-short").modal({});
+                      $("#got-short").modal({});
+                  } else {
+                      $("#link-err").modal({});
+                  }
               };
               r.open("POST", "/api/shorten", true);
               r.setRequestHeader("Content-Type", "application/json;charset=UTF-8");
@@ -64,6 +68,18 @@
           <div class="modal-body">
             <code id="link"></code>
             <img id="clip-copy" alt="Copy to clipboard" src="/static/img/clipboard.svg" class="btn btn-primary"/>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div id="link-err" class="modal" tabindex="-1" role="dialog">
+      <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">Invalid link</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
           </div>
         </div>
       </div>
