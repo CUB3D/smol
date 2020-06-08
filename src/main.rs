@@ -1,17 +1,17 @@
 use crate::models::NewLink;
 use actix_files::Files;
+use actix_web::http::header::LOCATION;
 use actix_web::middleware::{Compress, Logger, NormalizePath};
+use actix_web::web::Data;
 use actix_web::{get, head, post, web, App, HttpResponse, HttpServer, Responder};
 use diesel::prelude::*;
+use diesel::r2d2::{ConnectionManager, Pool};
 use diesel::{Connection, MysqlConnection, RunQueryDsl};
 use dotenv::dotenv;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::env;
-use actix_web::http::header::LOCATION;
-use actix_web::web::Data;
-use diesel::r2d2::{Pool, ConnectionManager};
-use url::{Url, ParseError};
+use url::{ParseError, Url};
 
 #[macro_use]
 extern crate diesel;
@@ -24,7 +24,9 @@ pub mod models;
 pub mod schema;
 
 #[head("/")]
-async fn index_head() -> impl Responder { HttpResponse::Ok() }
+async fn index_head() -> impl Responder {
+    HttpResponse::Ok()
+}
 
 #[get("/")]
 async fn index() -> impl Responder {
@@ -44,10 +46,7 @@ struct ShortenPayload {
 type DBHandle = Pool<ConnectionManager<MysqlConnection>>;
 
 #[post("/api/shorten")]
-async fn api_shorten(
-    pool: Data<DBHandle>,
-    json: web::Json<ShortenPayload>,
-) -> impl Responder {
+async fn api_shorten(pool: Data<DBHandle>, json: web::Json<ShortenPayload>) -> impl Responder {
     use schema::links;
 
     let short_code: String = rand::thread_rng()
@@ -59,10 +58,9 @@ async fn api_shorten(
 
     let source_parse = Url::parse(&source_url);
 
-
     // If the given url is missing the scheme then try adding it
     if let Err(ParseError::RelativeUrlWithoutBase) = source_parse {
-        let http_url =format!("https://{}", &source_url);
+        let http_url = format!("https://{}", &source_url);
         if let Ok(http_url) = Url::parse(&http_url) {
             source_url = http_url.to_string();
         } else {
@@ -86,10 +84,7 @@ async fn api_shorten(
 }
 
 #[get("/{shortId}")]
-async fn short(
-    pool: Data<DBHandle>,
-    path: web::Path<(String,)>
-) -> impl Responder {
+async fn short(pool: Data<DBHandle>, path: web::Path<(String,)>) -> impl Responder {
     use self::models::Link;
     use schema::links::dsl::*;
 
@@ -97,9 +92,7 @@ async fn short(
 
     let conn = pool.get().unwrap();
 
-    let other_short = links
-        .filter(short_code.eq(&path.0))
-        .first::<Link>(&conn);
+    let other_short = links.filter(short_code.eq(&path.0)).first::<Link>(&conn);
 
     if let Ok(short) = other_short {
         HttpResponse::PermanentRedirect()
@@ -115,31 +108,25 @@ async fn short(
 #[derive(Serialize)]
 struct LinkInfo {
     target: String,
-    created: String
+    created: String,
 }
 
 #[get("/api/link/{shortId}/info")]
-async fn api_link_info(
-    pool: Data<DBHandle>,
-    path: web::Path<(String,)>
-) -> impl Responder {
+async fn api_link_info(pool: Data<DBHandle>, path: web::Path<(String,)>) -> impl Responder {
     use self::models::Link;
     use schema::links::dsl::*;
 
     let conn = pool.get().unwrap();
 
-    let other_short = links
-        .filter(short_code.eq(&path.0))
-        .first::<Link>(&conn);
+    let other_short = links.filter(short_code.eq(&path.0)).first::<Link>(&conn);
 
     if let Ok(s) = other_short {
         let link_info = LinkInfo {
             target: s.original_link,
-            created: s.created.to_string()
+            created: s.created.to_string(),
         };
 
-        HttpResponse::Ok()
-            .json(link_info)
+        HttpResponse::Ok().json(link_info)
     } else {
         HttpResponse::BadRequest().finish()
     }
@@ -184,7 +171,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Compress::default())
             .wrap(NormalizePath::default())
     })
-    .bind("0.0.0.0:8080")
+    .bind(env::var("HOST").unwrap_or("0.0.0.0:8080".into()))
     .expect("Unable to bind to address")
     .run()
     .await
