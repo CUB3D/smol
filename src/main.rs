@@ -73,14 +73,19 @@ async fn api_shorten(pool: Data<DBHandle>, json: web::Json<ShortenPayload>) -> i
         original_link: source_url.as_str(),
     };
 
-    let conn = pool.get().unwrap();
-
-    diesel::insert_into(links::table)
-        .values(&new_link)
-        .execute(&conn)
-        .expect("Unable to add link");
-
-    HttpResponse::Ok().body(short_code)
+    if let Ok(conn) = pool.get() {
+        if diesel::insert_into(links::table)
+            .values(&new_link)
+            .execute(&conn)
+            .is_ok()
+        {
+            HttpResponse::Ok().body(short_code)
+        } else {
+            HttpResponse::InternalServerError().finish()
+        }
+    } else {
+        HttpResponse::InternalServerError().finish()
+    }
 }
 
 #[get("/{shortId}")]
@@ -90,18 +95,20 @@ async fn short(pool: Data<DBHandle>, path: web::Path<(String,)>) -> impl Respond
 
     println!("Given link: {}", &path.0);
 
-    let conn = pool.get().unwrap();
+    if let Ok(conn) = pool.get() {
+        let other_short = links.filter(short_code.eq(&path.0)).first::<Link>(&conn);
 
-    let other_short = links.filter(short_code.eq(&path.0)).first::<Link>(&conn);
-
-    if let Ok(short) = other_short {
-        HttpResponse::PermanentRedirect()
-            .header(LOCATION, short.original_link)
-            .finish()
+        if let Ok(short) = other_short {
+            HttpResponse::PermanentRedirect()
+                .header(LOCATION, short.original_link)
+                .finish()
+        } else {
+            HttpResponse::PermanentRedirect()
+                .header(LOCATION, "/")
+                .finish()
+        }
     } else {
-        HttpResponse::PermanentRedirect()
-            .header(LOCATION, "/")
-            .finish()
+        HttpResponse::InternalServerError().finish()
     }
 }
 
@@ -116,19 +123,21 @@ async fn api_link_info(pool: Data<DBHandle>, path: web::Path<(String,)>) -> impl
     use self::models::Link;
     use schema::links::dsl::*;
 
-    let conn = pool.get().unwrap();
+    if let Ok(conn) = pool.get() {
+        let other_short = links.filter(short_code.eq(&path.0)).first::<Link>(&conn);
 
-    let other_short = links.filter(short_code.eq(&path.0)).first::<Link>(&conn);
+        if let Ok(s) = other_short {
+            let link_info = LinkInfo {
+                target: s.original_link,
+                created: s.created.to_string(),
+            };
 
-    if let Ok(s) = other_short {
-        let link_info = LinkInfo {
-            target: s.original_link,
-            created: s.created.to_string(),
-        };
-
-        HttpResponse::Ok().json(link_info)
+            HttpResponse::Ok().json(link_info)
+        } else {
+            HttpResponse::BadRequest().finish()
+        }
     } else {
-        HttpResponse::BadRequest().finish()
+        HttpResponse::InternalServerError().finish()
     }
 }
 
@@ -136,20 +145,20 @@ fn get_db_connection() -> Pool<ConnectionManager<MysqlConnection>> {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
     let conn = MysqlConnection::establish(&database_url)
-        .expect(&format!("Error connecting to {}", database_url));
+        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url));
 
     embedded_migrations::run_with_output(&conn, &mut std::io::stdout())
         .expect("Unable to run migrations");
 
     let manager = ConnectionManager::<MysqlConnection>::new(database_url);
 
-    let pool = diesel::r2d2::Pool::builder()
-        .max_size(4)
+    diesel::r2d2::Pool::builder()
+        .max_lifetime(None)
+        .idle_timeout(None)
+        .max_size(2)
         .test_on_check_out(true)
         .build(manager)
-        .unwrap();
-
-    pool
+        .unwrap()
 }
 
 #[actix_rt::main]
@@ -171,7 +180,7 @@ async fn main() -> std::io::Result<()> {
             .wrap(Compress::default())
             .wrap(NormalizePath::default())
     })
-    .bind(env::var("HOST").unwrap_or("0.0.0.0:8080".into()))
+    .bind(env::var("HOST").unwrap_or_else(|_| "0.0.0.0:8080".into()))
     .expect("Unable to bind to address")
     .run()
     .await
