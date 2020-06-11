@@ -14,7 +14,7 @@ use diesel::r2d2::{ConnectionManager, Pool};
 use diesel::{Connection, MysqlConnection, RunQueryDsl};
 use dotenv::dotenv;
 use rand::Rng;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 use std::env;
 use url::{ParseError, Url};
 

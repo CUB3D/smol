@@ -39,7 +39,7 @@ pub async fn api_link_info(pool: Data<DBHandle>, path: web::Path<(String,)>) -> 
 mod tests {
     use super::*;
     use crate::get_db_connection;
-    use actix_web::{test, web, App};
+    use actix_web::{test, App};
     use dotenv::dotenv;
 
     #[actix_rt::test]
