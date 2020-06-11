@@ -8,6 +8,12 @@ pub struct Link {
     pub created: chrono::NaiveDateTime,
 }
 
+impl Link {
+    pub fn created_formatted(&self) -> String {
+        self.created.format("%Y/%m/%d").to_string()
+    }
+}
+
 #[derive(Insertable)]
 #[table_name = "links"]
 pub struct NewLink<'a> {

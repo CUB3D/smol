@@ -1,0 +1,25 @@
+{% extends "base_template.html" %}
+{% block content %}
+<h2 class="ml-1 mt-1 text-white">Available links</h2>
+
+<table class="table">
+  <thead>
+  <tr>
+    <th scope="col" class="text-white">#</th>
+    <th scope="col" class="text-white">Original link</th>
+    <th scope="col" class="text-white">Shortened link</th>
+    <th scope="col" class="text-white">Created</th>
+  </tr>
+  </thead>
+  <tbody>
+  {% for link in links %}
+    <tr>
+      <th scope="row" class="text-white">{{ link.id }}</th>
+      <td class="text-white">{{ link.original_link }}</td>
+      <td class="text-white">{{ link.short_code }}</td>
+      <td class="text-white">{{ link.created_formatted() }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
