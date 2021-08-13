@@ -23,7 +23,7 @@ chrono = "0.4"
 diesel = { version = "1.4", features = ["r2d2", "mysql", "chrono"] }
 diesel_migrations = "1.4"
 
-env_logger = "0.7"
+env_logger = "0.9"
 
 url = "2"
 http = "0.2"
