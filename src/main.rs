@@ -10,13 +10,16 @@ use actix_web::middleware::{Compress, Logger, NormalizePath};
 use actix_web::web::Data;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use diesel::prelude::*;
-use diesel::r2d2::{ConnectionManager, Pool};
+use diesel::r2d2::{ConnectionManager, HandleError, Pool};
 use diesel::{Connection, MysqlConnection, RunQueryDsl};
 use dotenv::dotenv;
+use env_logger::Env;
 use rand::Rng;
 use serde::Deserialize;
 use std::env;
+use std::fmt::Debug;
 use url::{ParseError, Url};
+use uuid::Uuid;
 
 #[macro_use]
 extern crate diesel;
@@ -43,10 +46,17 @@ type DBHandle = Pool<ConnectionManager<MysqlConnection>>;
 async fn api_shorten(pool: Data<DBHandle>, json: web::Json<ShortenPayload>) -> impl Responder {
     use schema::links;
 
+    let request_id = Uuid::new_v4();
+    let span = tracing::info_span!("Shorten API", request_id = %request_id);
+    let _guard = span.enter();
+
     let short_code: String = rand::thread_rng()
         .sample_iter(rand::distributions::Alphanumeric)
+        .map(char::from)
         .take(3)
         .collect();
+
+    tracing::info!("Generated shortcode {}", short_code);
 
     let mut source_url = json.source.clone();
 
@@ -87,7 +97,11 @@ async fn short(pool: Data<DBHandle>, path: web::Path<(String,)>) -> impl Respond
     use self::models::Link;
     use schema::links::dsl::*;
 
-    println!("Given link: {}", &path.0);
+    let request_id = Uuid::new_v4();
+    let span = tracing::info_span!("Get short URL", request_id = %request_id);
+    let _guard = span.enter();
+
+    tracing::info!("Given link: {}", &path.0);
 
     if let Ok(conn) = pool.get() {
         let other_short = links.filter(short_code.eq(&path.0)).first::<Link>(&conn);
@@ -117,19 +131,31 @@ fn get_db_connection() -> Pool<ConnectionManager<MysqlConnection>> {
 
     let manager = ConnectionManager::<MysqlConnection>::new(database_url);
 
+    #[derive(Debug, Default)]
+    struct ErrorHandler;
+
+    impl<T: Debug> HandleError<T> for ErrorHandler {
+        fn handle_error(&self, error: T) {
+            tracing::error!("Got error {:?}", error);
+            panic!("error");
+        }
+    }
+
     diesel::r2d2::Pool::builder()
-        .max_lifetime(None)
-        .idle_timeout(None)
-        .max_size(2)
+        .error_handler(Box::new(ErrorHandler::default()))
+        .max_size(4)
         .test_on_check_out(true)
         .build(manager)
-        .unwrap()
+        .expect("Failed to build db connection pool")
 }
 
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
-    env_logger::init();
+    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+
+    let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0:8080".into());
+    tracing::info!("Server launched on '{}'", host);
 
     HttpServer::new(move || {
         App::new()
@@ -151,7 +177,7 @@ async fn main() -> std::io::Result<()> {
                     .secure(false),
             ))
     })
-    .bind(env::var("HOST").unwrap_or_else(|_| "0.0.0.0:8080".into()))
+    .bind(host)
     .expect("Unable to bind to address")
     .run()
     .await

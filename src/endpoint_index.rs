@@ -13,7 +13,7 @@ pub async fn index_head() -> impl Responder {
 
 #[get("/")]
 pub async fn index() -> impl Responder {
-    HttpResponse::Ok().body(IndexTemplate {}.render().unwrap())
+    HttpResponse::Ok().body(IndexTemplate {}.render().expect("Failed to render index"))
 }
 
 #[cfg(test)]
