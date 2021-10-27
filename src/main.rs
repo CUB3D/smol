@@ -6,7 +6,7 @@ use crate::models::NewLink;
 use actix_files::Files;
 use actix_identity::{CookieIdentityPolicy, IdentityService};
 use actix_web::http::header::LOCATION;
-use actix_web::middleware::{Compress, Logger, NormalizePath};
+use actix_web::middleware::{Compress, Logger, NormalizePath, TrailingSlash};
 use actix_web::web::Data;
 use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use diesel::prelude::*;
@@ -61,13 +61,16 @@ async fn api_shorten(pool: Data<DBHandle>, json: web::Json<ShortenPayload>) -> i
     let mut source_url = json.source.clone();
 
     let source_parse = Url::parse(&source_url);
+    tracing::debug!("Parsed url as {:?}", source_parse);
 
     // If the given url is missing the scheme then try adding it
     if let Err(ParseError::RelativeUrlWithoutBase) = source_parse {
+        tracing::info!("Url missing scheme, trying to parse as https");
         let http_url = format!("https://{}", &source_url);
         if let Ok(http_url) = Url::parse(&http_url) {
             source_url = http_url.to_string();
         } else {
+            tracing::info!("Failed to parse");
             return HttpResponse::BadRequest().finish();
         }
     }
@@ -108,11 +111,11 @@ async fn short(pool: Data<DBHandle>, path: web::Path<(String,)>) -> impl Respond
 
         if let Ok(short) = other_short {
             HttpResponse::PermanentRedirect()
-                .header(LOCATION, short.original_link)
+                .append_header((LOCATION, short.original_link))
                 .finish()
         } else {
             HttpResponse::PermanentRedirect()
-                .header(LOCATION, "/")
+                .append_header((LOCATION, "/"))
                 .finish()
         }
     } else {
@@ -159,7 +162,7 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
         App::new()
-            .data(get_db_connection())
+            .app_data(Data::new(get_db_connection()))
             .service(Files::new("/static", "./static"))
             .service(index)
             .service(index_head)
@@ -170,7 +173,7 @@ async fn main() -> std::io::Result<()> {
             .service(short)
             .wrap(Logger::default())
             .wrap(Compress::default())
-            .wrap(NormalizePath::default())
+            .wrap(NormalizePath::new(TrailingSlash::Trim))
             .wrap(IdentityService::new(
                 CookieIdentityPolicy::new(&[0; 32]) // <- create cookie identity policy
                     .name("auth-cookie")
