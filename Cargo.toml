@@ -12,7 +12,7 @@ actix-rt = "2.3.0"
 actix-files = "0.6.0-beta.8"
 actix-identity = "0.4.0-beta.3"
 rand = "0.8.4"
-serde = { version = "1.0.130", features = ["derive"] }
+serde = { version = "1.0.133", features = ["derive"] }
 dotenv = "0.15.0"
 chrono = "0.4.19"
 diesel = { version = "1.4.8", features = ["r2d2", "mysql", "chrono"] }
