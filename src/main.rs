@@ -56,6 +56,26 @@ async fn api_shorten(pool: Data<DBHandle>, json: web::Json<ShortenPayload>) -> i
     let span = tracing::info_span!("Shorten API", request_id = %request_id);
     let _guard = span.enter();
 
+    let mut source_url = json.source.clone();
+
+    let source_parse = Url::parse(&source_url);
+    tracing::info!("Parsed url {:?} as {:?}", source_url, source_parse);
+
+    // If the given url is missing the scheme then try adding it
+    if let Err(ParseError::RelativeUrlWithoutBase) = source_parse {
+        tracing::info!("Url missing scheme, trying to parse as https");
+        let http_url = format!("https://{}", &source_url);
+        match Url::parse(&http_url) {
+            Ok(http_url) => {
+                source_url = http_url.to_string();
+            }
+            Err(e) => {
+                tracing::info!("Failed to parse: {e:?}");
+                return HttpResponse::BadRequest().finish();
+            }
+        }
+    }
+
     let short_code: String = rand::thread_rng()
         .sample_iter(rand::distributions::Alphanumeric)
         .map(char::from)
@@ -63,23 +83,6 @@ async fn api_shorten(pool: Data<DBHandle>, json: web::Json<ShortenPayload>) -> i
         .collect();
 
     tracing::info!("Generated shortcode {}", short_code);
-
-    let mut source_url = json.source.clone();
-
-    let source_parse = Url::parse(&source_url);
-    tracing::debug!("Parsed url as {:?}", source_parse);
-
-    // If the given url is missing the scheme then try adding it
-    if let Err(ParseError::RelativeUrlWithoutBase) = source_parse {
-        tracing::info!("Url missing scheme, trying to parse as https");
-        let http_url = format!("https://{}", &source_url);
-        if let Ok(http_url) = Url::parse(&http_url) {
-            source_url = http_url.to_string();
-        } else {
-            tracing::info!("Failed to parse");
-            return HttpResponse::BadRequest().finish();
-        }
-    }
 
     let new_link = NewLink {
         short_code: &short_code,
