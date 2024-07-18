@@ -13,9 +13,9 @@ mod tests {
 
     #[actix_rt::test]
     async fn test_favicon_ok() {
-        let mut app = test::init_service(App::new().service(favicon)).await;
+        let app = test::init_service(App::new().service(favicon)).await;
         let req = test::TestRequest::get().uri("/favicon.ico").to_request();
-        let resp = test::call_service(&mut app, req).await;
-        assert_eq!(resp.status(), http::StatusCode::OK);
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
     }
 }

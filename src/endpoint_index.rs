@@ -24,20 +24,20 @@ mod tests {
 
     #[actix_rt::test]
     async fn test_index_ok() {
-        let mut app = test::init_service(App::new().service(index)).await;
+        let app = test::init_service(App::new().service(index)).await;
         let req = test::TestRequest::get().uri("/").to_request();
-        let resp = test::call_service(&mut app, req).await;
-        assert_eq!(resp.status(), http::StatusCode::OK);
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
     }
 
     #[actix_rt::test]
     async fn test_head_ok() {
-        let mut app = test::init_service(App::new().service(index_head)).await;
+        let app = test::init_service(App::new().service(index_head)).await;
         let req = test::TestRequest::default()
             .method(Method::HEAD)
             .uri("/")
             .to_request();
-        let resp = test::call_service(&mut app, req).await;
-        assert_eq!(resp.status(), http::StatusCode::OK);
+        let resp = test::call_service(&app, req).await;
+        assert_eq!(resp.status(), actix_web::http::StatusCode::OK);
     }
 }
