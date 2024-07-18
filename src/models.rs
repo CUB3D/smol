@@ -15,7 +15,7 @@ impl Link {
 }
 
 #[derive(Insertable)]
-#[table_name = "links"]
+#[diesel(table_name = links)]
 pub struct NewLink<'a> {
     pub original_link: &'a str,
     pub short_code: &'a str,

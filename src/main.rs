@@ -4,7 +4,11 @@ use crate::endpoint_favicon::favicon;
 use crate::endpoint_index::{index, index_head};
 use crate::models::NewLink;
 use actix_files::Files;
-use actix_identity::{CookieIdentityPolicy, IdentityService};
+use actix_identity::IdentityMiddleware;
+use actix_session::config::CookieContentSecurity;
+use actix_session::storage::CookieSessionStore;
+use actix_session::SessionMiddleware;
+use actix_web::cookie::{Key, SameSite};
 use actix_web::http::header::LOCATION;
 use actix_web::middleware::{Compress, Logger, NormalizePath, TrailingSlash};
 use actix_web::web::Data;
@@ -12,6 +16,7 @@ use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, HandleError, Pool};
 use diesel::{Connection, MysqlConnection, RunQueryDsl};
+use diesel_migrations::{EmbeddedMigrations, MigrationHarness};
 use dotenv::dotenv;
 use env_logger::Env;
 use rand::Rng;
@@ -26,7 +31,8 @@ extern crate diesel;
 
 #[macro_use]
 extern crate diesel_migrations;
-embed_migrations!();
+
+pub const MIGRATIONS: EmbeddedMigrations = embed_migrations!();
 
 pub mod endpoint_admin;
 pub mod endpoint_api_link_info;
@@ -80,10 +86,10 @@ async fn api_shorten(pool: Data<DBHandle>, json: web::Json<ShortenPayload>) -> i
         original_link: source_url.as_str(),
     };
 
-    if let Ok(conn) = pool.get() {
+    if let Ok(mut conn) = pool.get() {
         if diesel::insert_into(links::table)
             .values(&new_link)
-            .execute(&conn)
+            .execute(&mut conn)
             .is_ok()
         {
             HttpResponse::Ok().body(short_code)
@@ -106,8 +112,10 @@ async fn short(pool: Data<DBHandle>, path: web::Path<(String,)>) -> impl Respond
 
     tracing::info!("Given link: {}", &path.0);
 
-    if let Ok(conn) = pool.get() {
-        let other_short = links.filter(short_code.eq(&path.0)).first::<Link>(&conn);
+    if let Ok(mut conn) = pool.get() {
+        let other_short = links
+            .filter(short_code.eq(&path.0))
+            .first::<Link>(&mut conn);
 
         if let Ok(short) = other_short {
             HttpResponse::PermanentRedirect()
@@ -126,10 +134,10 @@ async fn short(pool: Data<DBHandle>, path: web::Path<(String,)>) -> impl Respond
 fn get_db_connection() -> Pool<ConnectionManager<MysqlConnection>> {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 
-    let conn = MysqlConnection::establish(&database_url)
+    let mut conn = MysqlConnection::establish(&database_url)
         .unwrap_or_else(|_| panic!("Error connecting to {}", database_url));
 
-    embedded_migrations::run_with_output(&conn, &mut std::io::stdout())
+    conn.run_pending_migrations(MIGRATIONS)
         .expect("Unable to run migrations");
 
     let manager = ConnectionManager::<MysqlConnection>::new(database_url);
@@ -145,7 +153,7 @@ fn get_db_connection() -> Pool<ConnectionManager<MysqlConnection>> {
     }
 
     diesel::r2d2::Pool::builder()
-        .error_handler(Box::new(ErrorHandler::default()))
+        .error_handler(Box::new(ErrorHandler))
         .max_size(4)
         .test_on_check_out(true)
         .build(manager)
@@ -159,6 +167,10 @@ async fn main() -> std::io::Result<()> {
 
     let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0:8080".into());
     tracing::info!("Server launched on '{}'", host);
+
+    let pkey = env::var("PRIVATE_KEY")
+        .map(|s| s.into_bytes())
+        .expect("No PRIVATE_KEY in env");
 
     HttpServer::new(move || {
         App::new()
@@ -174,11 +186,19 @@ async fn main() -> std::io::Result<()> {
             .wrap(Logger::default())
             .wrap(Compress::default())
             .wrap(NormalizePath::new(TrailingSlash::Trim))
-            .wrap(IdentityService::new(
-                CookieIdentityPolicy::new(&[0; 32]) // <- create cookie identity policy
-                    .name("auth-cookie")
-                    .secure(false),
-            ))
+            .wrap(IdentityMiddleware::default())
+            // The identity system is built on top of sessions. You must install the session
+            // middleware to leverage `actix-identity`. The session middleware must be mounted
+            // AFTER the identity middleware: `actix-web` invokes middleware in the OPPOSITE
+            // order of registration when it receives an incoming request.
+            .wrap(
+                SessionMiddleware::builder(CookieSessionStore::default(), Key::from(&pkey))
+                    .cookie_name("smol-auth".to_string())
+                    .cookie_secure(false)
+                    .cookie_content_security(CookieContentSecurity::Private)
+                    .cookie_same_site(SameSite::Lax)
+                    .build(),
+            )
     })
     .bind(host)
     .expect("Unable to bind to address")

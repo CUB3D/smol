@@ -20,9 +20,9 @@ pub async fn admin(pool: Data<DBHandle>) -> impl Responder {
     let span = tracing::info_span!("Admin dashboard", request_id = %request_id);
     let _guard = span.enter();
 
-    if let Ok(conn) = pool.get() {
+    if let Ok(mut conn) = pool.get() {
         let db_links = links
-            .load::<Link>(&conn)
+            .load::<Link>(&mut conn)
             .expect("Failed to load Links from db");
         HttpResponse::Ok().body(
             AdminTemplate { links: db_links }

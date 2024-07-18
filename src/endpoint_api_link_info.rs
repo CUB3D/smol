@@ -17,8 +17,10 @@ pub struct LinkInfo {
 
 #[get("/api/link/{shortId}/info")]
 pub async fn api_link_info(pool: Data<DBHandle>, path: web::Path<(String,)>) -> impl Responder {
-    if let Ok(conn) = pool.get() {
-        let other_short = links.filter(short_code.eq(&path.0)).first::<Link>(&conn);
+    if let Ok(mut conn) = pool.get() {
+        let other_short = links
+            .filter(short_code.eq(&path.0))
+            .first::<Link>(&mut conn);
 
         if let Ok(s) = other_short {
             let link_info = LinkInfo {
