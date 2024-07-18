@@ -89,18 +89,26 @@ async fn api_shorten(pool: Data<DBHandle>, json: web::Json<ShortenPayload>) -> i
         original_link: source_url.as_str(),
     };
 
-    if let Ok(mut conn) = pool.get() {
-        if diesel::insert_into(links::table)
-            .values(&new_link)
-            .execute(&mut conn)
-            .is_ok()
-        {
-            HttpResponse::Ok().body(short_code)
-        } else {
+    match pool.get() {
+        Ok(mut conn) => {
+            match diesel::insert_into(links::table)
+                .values(&new_link)
+                .execute(&mut conn)
+            {
+                Ok(_) => {
+                    tracing::info!("Inserted ok");
+                    HttpResponse::Ok().body(short_code)
+                }
+                Err(e) => {
+                    tracing::error!("Failed to execute query {e:?}");
+                    HttpResponse::InternalServerError().finish()
+                }
+            }
+        }
+        Err(e) => {
+            tracing::error!("Failed to get pool {e:?}");
             HttpResponse::InternalServerError().finish()
         }
-    } else {
-        HttpResponse::InternalServerError().finish()
     }
 }
 
