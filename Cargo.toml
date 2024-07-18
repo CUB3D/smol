@@ -19,9 +19,9 @@ chrono = "0.4.38"
 diesel = { version = "2.2.1", features = ["r2d2", "mysql", "chrono"] }
 diesel_migrations = "2.2.0"
 log = "0.4.22"
-env_logger = "0.11.3"
 tracing = { version = "0.1.40", features = ["log"] }
 tracing-futures = "0.2.5"
+tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 url = "2.5.2"
 http = "1.1.0"
 askama = "0.12.1"

@@ -18,11 +18,13 @@ use diesel::r2d2::{ConnectionManager, HandleError, Pool};
 use diesel::{Connection, MysqlConnection, RunQueryDsl};
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness};
 use dotenv::dotenv;
-use env_logger::Env;
 use rand::Rng;
 use serde::Deserialize;
 use std::env;
 use std::fmt::Debug;
+use tracing::level_filters::LevelFilter;
+use tracing_subscriber::util::SubscriberInitExt;
+use tracing_subscriber::EnvFilter;
 use url::{ParseError, Url};
 use uuid::Uuid;
 
@@ -174,7 +176,15 @@ fn get_db_connection() -> Pool<ConnectionManager<MysqlConnection>> {
 #[actix_rt::main]
 async fn main() -> std::io::Result<()> {
     dotenv().ok();
-    env_logger::Builder::from_env(Env::default().default_filter_or("info")).init();
+
+    tracing_subscriber::fmt::fmt()
+        .with_env_filter(
+            EnvFilter::builder()
+                .with_default_directive(LevelFilter::INFO.into())
+                .from_env_lossy(),
+        )
+        .finish()
+        .init();
 
     let host = env::var("HOST").unwrap_or_else(|_| "0.0.0.0:8080".into());
     tracing::info!("Server launched on '{}'", host);
