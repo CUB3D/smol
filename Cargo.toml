@@ -13,7 +13,7 @@ actix-files = "0.6.6"
 actix-identity = "0.7.1"
 actix-session = {version = "0.9.0", features = ["cookie-session"]}
 rand = "0.8.5"
-serde = { version = "1.0.204", features = ["derive"] }
+serde = { version = "1.0.210", features = ["derive"] }
 dotenv = "0.15.0"
 chrono = "0.4.38"
 diesel = { version = "2.2.1", features = ["r2d2", "mysql", "chrono"] }
