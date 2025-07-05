@@ -1,5 +1,5 @@
-use actix_web::{get, head};
 use actix_web::{HttpResponse, Responder};
+use actix_web::{get, head};
 use askama::Template;
 
 #[derive(Template)]
@@ -20,7 +20,7 @@ pub async fn index() -> impl Responder {
 mod tests {
     use super::*;
     use actix_web::http::Method;
-    use actix_web::{test, App};
+    use actix_web::{App, test};
 
     #[actix_rt::test]
     async fn test_index_ok() {

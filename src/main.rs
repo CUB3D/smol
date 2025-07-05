@@ -5,14 +5,14 @@ use crate::endpoint_index::{index, index_head};
 use crate::models::NewLink;
 use actix_files::Files;
 use actix_identity::IdentityMiddleware;
+use actix_session::SessionMiddleware;
 use actix_session::config::CookieContentSecurity;
 use actix_session::storage::CookieSessionStore;
-use actix_session::SessionMiddleware;
 use actix_web::cookie::{Key, SameSite};
 use actix_web::http::header::LOCATION;
 use actix_web::middleware::{Compress, Logger, NormalizePath, TrailingSlash};
 use actix_web::web::Data;
-use actix_web::{get, post, web, App, HttpResponse, HttpServer, Responder};
+use actix_web::{App, HttpResponse, HttpServer, Responder, get, post, web};
 use diesel::prelude::*;
 use diesel::r2d2::{ConnectionManager, HandleError, Pool};
 use diesel::{Connection, MysqlConnection, RunQueryDsl};
@@ -23,8 +23,8 @@ use serde::Deserialize;
 use std::env;
 use std::fmt::Debug;
 use tracing::level_filters::LevelFilter;
-use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::util::SubscriberInitExt;
 use url::{ParseError, Url};
 use uuid::Uuid;
 
@@ -78,8 +78,8 @@ async fn api_shorten(pool: Data<DBHandle>, json: web::Json<ShortenPayload>) -> i
         }
     }
 
-    let short_code: String = rand::thread_rng()
-        .sample_iter(rand::distributions::Alphanumeric)
+    let short_code: String = rand::rng()
+        .sample_iter(rand::distr::Alphanumeric)
         .map(char::from)
         .take(3)
         .collect();

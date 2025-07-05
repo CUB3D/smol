@@ -1,6 +1,6 @@
+use crate::DBHandle;
 use crate::models::Link;
 use crate::schema::links::dsl::*;
-use crate::DBHandle;
 use actix_web::get;
 use actix_web::web::Data;
 use actix_web::{HttpResponse, Responder};

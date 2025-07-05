@@ -1,12 +1,12 @@
+use crate::DBHandle;
 use crate::models::Link;
 use crate::schema::links::dsl::*;
-use crate::DBHandle;
 use actix_web::get;
 use actix_web::web::Data;
-use actix_web::{web, HttpResponse, Responder};
-use diesel::query_dsl::filter_dsl::FilterDsl;
+use actix_web::{HttpResponse, Responder, web};
 use diesel::ExpressionMethods;
 use diesel::RunQueryDsl;
+use diesel::query_dsl::filter_dsl::FilterDsl;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize)]
@@ -41,7 +41,7 @@ pub async fn api_link_info(pool: Data<DBHandle>, path: web::Path<(String,)>) -> 
 mod tests {
     use super::*;
     use crate::get_db_connection;
-    use actix_web::{test, App};
+    use actix_web::{App, test};
     use dotenv::dotenv;
 
     // #[actix_rt::test]

@@ -9,7 +9,7 @@ pub async fn favicon() -> impl Responder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use actix_web::{test, App};
+    use actix_web::{App, test};
 
     #[actix_rt::test]
     async fn test_favicon_ok() {
