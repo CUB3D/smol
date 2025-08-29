@@ -21,7 +21,7 @@ diesel_migrations = "=2.2.0"
 #log = "0.4.22"
 tracing = { version = "=0.1.41", features = ["log"] }
 #tracing-futures = "0.2.5"
-tracing-subscriber = { version = "=0.3.19", features = ["env-filter"] }
+tracing-subscriber = { version = "=0.3.20", features = ["env-filter"] }
 url = "=2.5.4"
 #http = "1.1.0"
 askama = "=0.14.0"
