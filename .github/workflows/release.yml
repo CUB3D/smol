@@ -18,6 +18,6 @@ jobs:
       - name: Build and publish to GHCR
         uses: macbre/push-to-ghcr@master
         with:
-          image_name: smol
+          image_name: cub3d/smol
           github_token: ${{ secrets.GITHUB_TOKEN }}
   
