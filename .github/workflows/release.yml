@@ -14,10 +14,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
-    - name: Build
+      - uses: actions/checkout@v2
+      - name: Build
 # push to ghcr
-    - name: Build and publish to GHCR
+      - name: Build and publish to GHCR
         uses: macbre/push-to-ghcr@master
         with:
           image_name: smol
