@@ -15,7 +15,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v2
-      - name: Build
       - name: Build and publish to GHCR
         uses: macbre/push-to-ghcr@master
         with:
