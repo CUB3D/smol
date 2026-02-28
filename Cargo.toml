@@ -21,6 +21,6 @@ diesel_migrations = "=2.3.1"
 tracing = { version = "=0.1.44", features = ["log"] }
 tracing-subscriber = { version = "=0.3.22", features = ["env-filter"] }
 url = "=2.5.8"
-askama = "=0.15.1"
+askama = "=0.15.4"
 uuid = { version = "=1.20.0", features = ["v4"] }
 
