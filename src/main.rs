@@ -200,7 +200,7 @@ async fn main() -> std::io::Result<()> {
             .service(index)
             .service(index_head)
             .service(favicon)
-            .service(admin)
+            //.service(admin)
             .service(api_shorten)
             .service(api_link_info)
             .service(short)
