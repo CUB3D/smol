@@ -7,20 +7,20 @@ edition = "2024"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-actix-web = "=4.13.0"
-actix-rt = "=2.11.0"
-actix-files = "=0.6.10"
+actix-web = "=4.18.1"
+actix-rt = "=2.15.0"
+actix-files = "=0.7.3"
 actix-identity = "=0.9.0"
 actix-session = {version = "=0.11.0", features = ["cookie-session"]}
-rand = "=0.9.3"
-serde = { version = "=1.0.228", features = ["derive"] }
+rand = "=0.10.3"
+serde = { version = "=1.0.229", features = ["derive"] }
 dotenv = "=0.15.0"
-chrono = "=0.4.44"
-diesel = { version = "=2.3.10", features = ["r2d2", "mysql", "chrono"] }
-diesel_migrations = "=2.3.1"
+chrono = "=0.4.45"
+diesel = { version = "=2.3.14", features = ["r2d2", "mysql", "chrono"] }
+diesel_migrations = "=2.3.2"
 tracing = { version = "=0.1.44", features = ["log"] }
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
 url = "=2.5.8"
-askama = "=0.15.4"
-uuid = { version = "=1.20.0", features = ["v4"] }
+askama = "=0.16.1"
+uuid = { version = "=1.29.0", features = ["v4"] }
 

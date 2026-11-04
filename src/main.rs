@@ -1,4 +1,3 @@
-use crate::endpoint_admin::admin;
 use crate::endpoint_api_link_info::api_link_info;
 use crate::endpoint_favicon::favicon;
 use crate::endpoint_index::{index, index_head};
@@ -18,10 +17,10 @@ use diesel::r2d2::{ConnectionManager, HandleError, Pool};
 use diesel::{Connection, MysqlConnection, RunQueryDsl};
 use diesel_migrations::{EmbeddedMigrations, MigrationHarness};
 use dotenv::dotenv;
-use rand::Rng;
 use serde::Deserialize;
 use std::env;
 use std::fmt::Debug;
+use rand::RngExt;
 use tracing::level_filters::LevelFilter;
 use tracing_subscriber::EnvFilter;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -66,7 +65,7 @@ async fn api_shorten(pool: Data<DBHandle>, json: web::Json<ShortenPayload>) -> i
     // If the given url is missing the scheme then try adding it
     if let Err(ParseError::RelativeUrlWithoutBase) = source_parse {
         tracing::info!("Url missing scheme, trying to parse as https");
-        let http_url = format!("https://{}", &source_url);
+        let http_url = format!("https://{}", source_url);
         match Url::parse(&http_url) {
             Ok(http_url) => {
                 source_url = http_url.to_string();
