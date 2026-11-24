@@ -20,7 +20,7 @@ diesel = { version = "=2.3.14", features = ["r2d2", "mysql", "chrono"] }
 diesel_migrations = "=2.3.2"
 tracing = { version = "=0.1.44", features = ["log"] }
 tracing-subscriber = { version = "=0.3.23", features = ["env-filter"] }
-url = "=2.5.8"
+url = "=2.5.9"
 askama = "=0.16.1"
 uuid = { version = "=1.29.0", features = ["v4"] }
 
